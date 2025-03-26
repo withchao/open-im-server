@@ -72,26 +72,26 @@ func UserPb2DB(user *sdkws.UserInfo) *relationtb.User {
 //	}
 //	return val
 //}
-
-func UserPb2DBMapEx(user *sdkws.UserInfoWithEx) map[string]any {
-	if user == nil {
-		return nil
-	}
-	val := make(map[string]any)
-
-	// Map fields from UserInfoWithEx to val
-	if user.Nickname != nil {
-		val["nickname"] = user.Nickname.Value
-	}
-	if user.FaceURL != nil {
-		val["face_url"] = user.FaceURL.Value
-	}
-	if user.Ex != nil {
-		val["ex"] = user.Ex.Value
-	}
-	if user.GlobalRecvMsgOpt != nil {
-		val["global_recv_msg_opt"] = user.GlobalRecvMsgOpt.Value
-	}
-
-	return val
-}
+//
+//func UserPb2DBMapEx(user *sdkws.UserInfoWithEx) map[string]any {
+//	if user == nil {
+//		return nil
+//	}
+//	val := make(map[string]any)
+//
+//	// Map fields from UserInfoWithEx to val
+//	if user.Nickname != nil {
+//		val["nickname"] = user.Nickname.Value
+//	}
+//	if user.FaceURL != nil {
+//		val["face_url"] = user.FaceURL.Value
+//	}
+//	if user.Ex != nil {
+//		val["ex"] = user.Ex.Value
+//	}
+//	if user.GlobalRecvMsgOpt != nil {
+//		val["global_recv_msg_opt"] = user.GlobalRecvMsgOpt.Value
+//	}
+//
+//	return val
+//}
