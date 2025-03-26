@@ -38,17 +38,7 @@ func main() {
 	if !ok {
 		panic("no caller information")
 	}
-	projectPath, err := filepath.Abs(".")
-	if err != nil {
-		panic(err)
-	}
 	updatePacket := filepath.Join(file, "./../../update")
-	_ = updatePacket
-
-	pp := models[0].PkgPath()
-	fmt.Println(pp)
-	fmt.Println(projectPath)
-	fmt.Println(filepath.Abs("."))
 
 	buf := new(strings.Builder)
 
@@ -56,20 +46,25 @@ func main() {
 
 	str1 := buf.String()
 
-	fmt.Println(str1)
+	const implPacketName = "mgoupdate"
+
 	buf.Reset()
 	const updatePacketName = "github.com/openimsdk/open-im-server/v3/pkg/common/storage/update"
-	writeImpl(buf, "mgoupdate", func(field reflect.StructField) (string, bool) {
+	writeImpl(buf, implPacketName, func(field reflect.StructField) (string, bool) {
 		return field.Tag.Get("bson"), true
 	}, updatePacketName)
 
 	str2 := buf.String()
 
-	fmt.Println(str2)
+	writeFile(filepath.Join(updatePacket, "update.go"), []byte(str1))
+	writeFile(filepath.Join(updatePacket, implPacketName, "update.go"), []byte(str2))
 
 }
 
 func writeFile(filename string, data []byte) {
+	if err := os.MkdirAll(filepath.Dir(filename), 0777); err != nil {
+		panic(err)
+	}
 	if err := os.WriteFile(filename, data, 0644); err != nil {
 		panic(err)
 	}
@@ -112,6 +107,12 @@ func writeImport(buf *strings.Builder, additional ...string) {
 	packages := make(map[string]struct{})
 	for _, m := range models {
 		for _, field := range GetStructFields(m) {
+			for field.Type.Kind() == reflect.Pointer {
+				field.Type = field.Type.Elem()
+			}
+			if field.Type.Kind() == reflect.Slice {
+				field.Type = field.Type.Elem()
+			}
 			packages[field.Type.PkgPath()] = struct{}{}
 		}
 	}
@@ -317,151 +318,3 @@ func writeModelImpl(buf *strings.Builder, rtyp reflect.Type, tag TagFunc, interf
 	}
 
 }
-
-//
-//func GenText(typ any, tag string, packet string) string {
-//	rtyp := reflect.TypeOf(typ)
-//	for rtyp.Kind() == reflect.Pointer {
-//		rtyp = rtyp.Elem()
-//	}
-//	if rtyp.Kind() != reflect.Struct {
-//		panic("not a struct")
-//	}
-//	num := rtyp.NumField()
-//	type modelField struct {
-//		Name string
-//		Key  string
-//		Type string
-//	}
-//	fields := make([]modelField, 0, num)
-//	packets := make(map[string]struct{})
-//	for i := 0; i < num; i++ {
-//		elem := rtyp.Field(i)
-//		key := elem.Tag.Get(tag)
-//		if key == "" {
-//			panic("empty tag")
-//		}
-//		fields = append(fields, modelField{Name: elem.Name, Key: key, Type: elem.Type.String()})
-//		if pktName := elem.Type.PkgPath(); pktName != "" {
-//			packets[pktName] = struct{}{}
-//		}
-//	}
-//
-//	updateName := fmt.Sprintf("%sUpdate", rtyp.Name())
-//
-//	var buf strings.Builder
-//	buf.WriteString(fmt.Sprintf("package %s\n", packet))
-//	buf.WriteString("\n")
-//
-//	if len(packets) > 0 {
-//		names := maps.Keys(packets)
-//		sort.Strings(names)
-//		buf.WriteString("import (\n")
-//		for _, name := range names {
-//			buf.WriteString(fmt.Sprintf("\t\"%s\"\n", name))
-//		}
-//		buf.WriteString(")\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	buf.WriteString(fmt.Sprintf("type %s struct {\n", updateName))
-//	buf.WriteString("\tupdate map[string]any\n")
-//	buf.WriteString("}\n")
-//	buf.WriteString("\n")
-//
-//	buf.WriteString(fmt.Sprintf("func (x *%s) Map() map[string]any {\n", updateName))
-//	buf.WriteString("\treturn x.update\n")
-//	buf.WriteString("}\n")
-//	buf.WriteString("\n")
-//
-//	buf.WriteString(fmt.Sprintf("func (x *%s) Num() int {\n", updateName))
-//	buf.WriteString("\treturn len(x.update)\n")
-//	buf.WriteString("}\n")
-//	buf.WriteString("\n")
-//
-//	buf.WriteString(fmt.Sprintf("func (x *%s) init() {\n", updateName))
-//	buf.WriteString("\tif x.update == nil {\n")
-//	buf.WriteString("\t\tx.update = make(map[string]any)\n")
-//	buf.WriteString("\t}\n")
-//	buf.WriteString("}\n")
-//
-//	for _, field := range fields {
-//		buf.WriteString(fmt.Sprintf("func (x *%s) With%s(value %s) *%s {\n", updateName, field.Name, field.Type, updateName))
-//		buf.WriteString("\tx.init()\n")
-//		buf.WriteString(fmt.Sprintf("\tx.update[\"%s\"] = value\n", field.Key))
-//		buf.WriteString("\treturn x\n")
-//		buf.WriteString("}\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	for _, field := range fields {
-//		buf.WriteString(fmt.Sprintf("func (x *%s) WithPtr%s(value *%s) *%s {\n", updateName, field.Name, field.Type, updateName))
-//		buf.WriteString("\tx.init()\n")
-//		buf.WriteString(fmt.Sprintf("\tif value != nil {\n"))
-//		buf.WriteString(fmt.Sprintf("\t\tx.update[\"%s\"] = *value\n", field.Key))
-//		buf.WriteString("\t}\n")
-//		buf.WriteString("\treturn x\n")
-//		buf.WriteString("}\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	for _, field := range fields {
-//		buf.WriteString(fmt.Sprintf("func (x *%s) Del%s() *%s {\n", updateName, field.Name, updateName))
-//		buf.WriteString(fmt.Sprintf("\tdelete(x.update, \"%s\")\n", field.Key))
-//		buf.WriteString("\treturn x\n")
-//		buf.WriteString("}\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	for _, field := range fields {
-//		buf.WriteString(fmt.Sprintf("func (x *%s) Has%s() bool {\n", updateName, field.Name))
-//		buf.WriteString(fmt.Sprintf("\t_, ok := x.update[\"%s\"]\n", field.Key))
-//		buf.WriteString("\treturn ok\n")
-//		buf.WriteString("}\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	for _, field := range fields {
-//		buf.WriteString(fmt.Sprintf("func (x *%s) Get%s() (_ %s, _ bool) {\n", updateName, field.Name, field.Type))
-//		buf.WriteString(fmt.Sprintf("\tif value, ok := x.update[\"%s\"]; ok {\n", field.Key))
-//		buf.WriteString(fmt.Sprintf("\t\treturn value.(%s), true\n", field.Type))
-//		buf.WriteString("\t}\n")
-//		buf.WriteString("\treturn\n")
-//		buf.WriteString("}\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	for _, field := range fields {
-//		buf.WriteString(fmt.Sprintf("func (x *%s) GetPtr%s() *%s {\n", updateName, field.Name, field.Type))
-//		buf.WriteString(fmt.Sprintf("\tif value, ok := x.update[\"%s\"]; ok {\n", field.Key))
-//		buf.WriteString(fmt.Sprintf("\t\tval := value.(%s)\n", field.Type))
-//		buf.WriteString("\t\treturn &val\n")
-//		buf.WriteString("\t}\n")
-//		buf.WriteString("\treturn nil\n")
-//		buf.WriteString("}\n")
-//		buf.WriteString("\n")
-//	}
-//
-//	str := buf.String()
-//	fmt.Println(str)
-//	return ""
-//}
-//
-//type Demo struct {
-//	ID         primitive.ObjectID `bson:"_id"`
-//	Platform   string             `bson:"platform"`
-//	Text       *string            `bson:"text"`
-//	CreateTime time.Time          `bson:"create_time"`
-//	UpdateTime *time.Time         `bson:"create_time"`
-//}
-//
-//func TestName2(t *testing.T) {
-//	var m map[string]any
-//	delete(m, "aaaa")
-//}
-
-/*
-2025-03-25 08:06:34.273
-
-
-*/

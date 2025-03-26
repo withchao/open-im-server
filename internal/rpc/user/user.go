@@ -33,6 +33,8 @@ import (
 	"github.com/openimsdk/open-im-server/v3/pkg/common/storage/controller"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/storage/database/mgo"
 	tablerelation "github.com/openimsdk/open-im-server/v3/pkg/common/storage/model"
+	"github.com/openimsdk/open-im-server/v3/pkg/common/storage/update"
+	"github.com/openimsdk/open-im-server/v3/pkg/common/storage/update/mgoupdate"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/webhook"
 	"github.com/openimsdk/open-im-server/v3/pkg/dbbuild"
 	"github.com/openimsdk/open-im-server/v3/pkg/localcache"
@@ -64,6 +66,7 @@ type userServer struct {
 	webhookClient            *webhook.Client
 	groupClient              *rpcli.GroupClient
 	relationClient           *rpcli.RelationClient
+	update                   update.Update
 }
 
 type Config struct {
@@ -125,6 +128,7 @@ func Start(ctx context.Context, config *Config, client discovery.Conn, server gr
 
 		groupClient:    rpcli.NewGroupClient(groupConn),
 		relationClient: rpcli.NewRelationClient(friendConn),
+		update:         mgoupdate.NewUpdate(),
 	}
 	pbuser.RegisterUserServer(server, u)
 	return u.db.InitOnce(context.Background(), users)
@@ -153,12 +157,30 @@ func (s *userServer) UpdateUserInfo(ctx context.Context, req *pbuser.UpdateUserI
 	if err := s.webhookBeforeUpdateUserInfo(ctx, &s.config.WebhooksConfig.BeforeUpdateUserInfo, req); err != nil {
 		return nil, err
 	}
-	data := convert.UserPb2DBMap(req.UserInfo)
+	data := s.update.NewUserUpdate()
+	if req.UserInfo.Nickname != "" {
+		data.WithNickname(req.UserInfo.Nickname)
+	}
+	if req.UserInfo.FaceURL != "" {
+		data.WithFaceURL(req.UserInfo.FaceURL)
+	}
+	if req.UserInfo.Ex != "" {
+		data.WithEx(req.UserInfo.Ex)
+	}
+	if req.UserInfo.AppMangerLevel != 0 {
+		data.WithAppMangerLevel(req.UserInfo.AppMangerLevel)
+	}
+	if req.UserInfo.GlobalRecvMsgOpt != 0 {
+		data.WithGlobalRecvMsgOpt(req.UserInfo.GlobalRecvMsgOpt)
+	}
+	if data.Len() == 0 {
+		return nil, errs.ErrArgs.WrapMsg("not update")
+	}
 	oldUser, err := s.db.GetUserByID(ctx, req.UserInfo.UserID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.db.UpdateByMap(ctx, req.UserInfo.UserID, data); err != nil {
+	if err := s.db.UpdateByMap(ctx, req.UserInfo.UserID, data.Map()); err != nil {
 		return nil, err
 	}
 	s.friendNotificationSender.UserInfoUpdatedNotification(ctx, req.UserInfo.UserID)
@@ -177,6 +199,16 @@ func (s *userServer) UpdateUserInfoEx(ctx context.Context, req *pbuser.UpdateUse
 		return nil, err
 	}
 
+	data := s.update.NewUserUpdate().
+		WithPtrNickname(req.UserInfo.Nickname.GetValuePtr()).
+		WithPtrFaceURL(req.UserInfo.FaceURL.GetValuePtr()).
+		WithPtrEx(req.UserInfo.Ex.GetValuePtr()).
+		WithPtrGlobalRecvMsgOpt(req.UserInfo.GlobalRecvMsgOpt.GetValuePtr())
+
+	if data.Len() == 0 {
+		return nil, errs.ErrArgs.WrapMsg("not update")
+	}
+
 	if err = s.webhookBeforeUpdateUserInfoEx(ctx, &s.config.WebhooksConfig.BeforeUpdateUserInfoEx, req); err != nil {
 		return nil, err
 	}
@@ -186,8 +218,7 @@ func (s *userServer) UpdateUserInfoEx(ctx context.Context, req *pbuser.UpdateUse
 		return nil, err
 	}
 
-	data := convert.UserPb2DBMapEx(req.UserInfo)
-	if err = s.db.UpdateByMap(ctx, req.UserInfo.UserID, data); err != nil {
+	if err = s.db.UpdateByMap(ctx, req.UserInfo.UserID, data.Map()); err != nil {
 		return nil, err
 	}
 

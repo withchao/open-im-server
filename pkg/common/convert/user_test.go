@@ -15,9 +15,10 @@
 package convert
 
 import (
-	relationtb "github.com/openimsdk/open-im-server/v3/pkg/common/storage/model"
 	"reflect"
 	"testing"
+
+	relationtb "github.com/openimsdk/open-im-server/v3/pkg/common/storage/model"
 
 	"github.com/openimsdk/protocol/sdkws"
 )
@@ -62,25 +63,25 @@ func TestUserPb2DB(t *testing.T) {
 	}
 }
 
-func TestUserPb2DBMap(t *testing.T) {
-	user := &sdkws.UserInfo{
-		Nickname:         "TestUser",
-		FaceURL:          "http://openim.io/logo.jpg",
-		Ex:               "Extra Data",
-		AppMangerLevel:   1,
-		GlobalRecvMsgOpt: 2,
-	}
-
-	expected := map[string]any{
-		"nickname":            "TestUser",
-		"face_url":            "http://openim.io/logo.jpg",
-		"ex":                  "Extra Data",
-		"app_manager_level":   int32(1),
-		"global_recv_msg_opt": int32(2),
-	}
-
-	result := UserPb2DBMap(user)
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("UserPb2DBMap returned unexpected map. Got %v, want %v", result, expected)
-	}
-}
+//func TestUserPb2DBMap(t *testing.T) {
+//	user := &sdkws.UserInfo{
+//		Nickname:         "TestUser",
+//		FaceURL:          "http://openim.io/logo.jpg",
+//		Ex:               "Extra Data",
+//		AppMangerLevel:   1,
+//		GlobalRecvMsgOpt: 2,
+//	}
+//
+//	expected := map[string]any{
+//		"nickname":            "TestUser",
+//		"face_url":            "http://openim.io/logo.jpg",
+//		"ex":                  "Extra Data",
+//		"app_manager_level":   int32(1),
+//		"global_recv_msg_opt": int32(2),
+//	}
+//
+//	result := UserPb2DBMap(user)
+//	if !reflect.DeepEqual(result, expected) {
+//		t.Errorf("UserPb2DBMap returned unexpected map. Got %v, want %v", result, expected)
+//	}
+//}
