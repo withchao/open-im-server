@@ -38,6 +38,7 @@ type UserConnContextInfo struct {
 	SDKType      string `json:"sdkType"`
 	SendResponse bool   `json:"sendResponse"`
 	Background   bool   `json:"background"`
+	SDKVersion   string `json:"sdkVersion"`
 }
 
 type UserConnContext struct {
@@ -74,6 +75,8 @@ func (c *UserConnContext) Value(key any) any {
 		return c.GetPlatformID()
 	case constant.RemoteAddr:
 		return c.RemoteAddr
+	case SDKVersion:
+		return c.info.SDKVersion
 	default:
 		return ""
 	}
@@ -117,6 +120,7 @@ func (c *UserConnContext) parseByQuery(query url.Values, header http.Header) err
 		OperationID: query.Get(OperationID),
 		Compression: query.Get(Compression),
 		SDKType:     query.Get(SDKType),
+		SDKVersion:  query.Get(SDKVersion),
 	}
 	platformID, err := strconv.Atoi(query.Get(PlatformID))
 	if err != nil {
@@ -244,6 +248,13 @@ func (c *UserConnContext) GetSDKType() string {
 	default:
 		return ""
 	}
+}
+
+func (c *UserConnContext) GetSDKVersion() string {
+	if c == nil || c.info == nil {
+		return ""
+	}
+	return c.info.SDKVersion
 }
 
 func (c *UserConnContext) ShouldSendResp() bool {
