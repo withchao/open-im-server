@@ -593,10 +593,6 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbgroup.KickGrou
 			}
 		}
 	}
-	num, err := s.db.FindGroupMemberNum(ctx, req.GroupID)
-	if err != nil {
-		return nil, err
-	}
 	ownerUserIDs, err := s.db.GetGroupRoleLevelMemberIDs(ctx, req.GroupID, constant.GroupOwner)
 	if err != nil {
 		return nil, err
@@ -608,6 +604,10 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbgroup.KickGrou
 	if err := s.db.DeleteGroupMember(ctx, group.GroupID, req.KickedUserIDs); err != nil {
 		return nil, err
 	}
+	num, err := s.db.FindGroupMemberNum(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
 	tips := &sdkws.MemberKickedTips{
 		Group: &sdkws.GroupInfo{
 			GroupID:                group.GroupID,
@@ -617,7 +617,7 @@ func (s *groupServer) KickGroupMember(ctx context.Context, req *pbgroup.KickGrou
 			FaceURL:                group.FaceURL,
 			OwnerUserID:            ownerUserID,
 			CreateTime:             group.CreateTime.UnixMilli(),
-			MemberCount:            num - uint32(len(req.KickedUserIDs)),
+			MemberCount:            num,
 			Ex:                     group.Ex,
 			Status:                 group.Status,
 			CreatorUserID:          group.CreatorUserID,
