@@ -17,7 +17,6 @@ package group
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"math/rand"
 	"strconv"
@@ -606,10 +605,6 @@ func (g *groupServer) KickGroupMember(ctx context.Context, req *pbgroup.KickGrou
 			}
 		}
 	}
-	num, err := g.db.FindGroupMemberNum(ctx, req.GroupID)
-	if err != nil {
-		return nil, err
-	}
 	ownerUserIDs, err := g.db.GetGroupRoleLevelMemberIDs(ctx, req.GroupID, constant.GroupOwner)
 	if err != nil {
 		return nil, err
@@ -621,6 +616,10 @@ func (g *groupServer) KickGroupMember(ctx context.Context, req *pbgroup.KickGrou
 	if err := g.db.DeleteGroupMember(ctx, group.GroupID, req.KickedUserIDs); err != nil {
 		return nil, err
 	}
+	num, err := g.db.FindGroupMemberNum(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
 	tips := &sdkws.MemberKickedTips{
 		Group: &sdkws.GroupInfo{
 			GroupID:                group.GroupID,
@@ -630,7 +629,7 @@ func (g *groupServer) KickGroupMember(ctx context.Context, req *pbgroup.KickGrou
 			FaceURL:                group.FaceURL,
 			OwnerUserID:            ownerUserID,
 			CreateTime:             group.CreateTime.UnixMilli(),
-			MemberCount:            num - uint32(len(req.KickedUserIDs)),
+			MemberCount:            num,
 			Ex:                     group.Ex,
 			Status:                 group.Status,
 			CreatorUserID:          group.CreatorUserID,
@@ -1040,7 +1039,7 @@ func (g *groupServer) deleteMemberAndSetConversationSeq(ctx context.Context, gro
 
 func (g *groupServer) setMemberJoinSeq(ctx context.Context, groupID string, userIDs []string) error {
 	conversationID := msgprocessor.GetConversationIDBySessionType(constant.ReadGroupChatType, groupID)
-	return g.conversationClient.SetConversationMaxSeq(ctx, conversationID, userIDs, math.MaxInt64)
+	return g.conversationClient.SetConversationMaxSeq(ctx, conversationID, userIDs, 0)
 }
 
 func (g *groupServer) SetGroupInfo(ctx context.Context, req *pbgroup.SetGroupInfoReq) (*pbgroup.SetGroupInfoResp, error) {
